@@ -62,6 +62,15 @@ nötig) – braucht Node.js **22.5 oder neuer**.
   Vergleichs-Buchmacher und wie einig sie sich sind – daraus ergibt sich der 1-10€-Einsatzvorschlag.
   Details: [`backend/src/valueCalc.js`](backend/src/valueCalc.js).
 
+## Team-Form & Tabellenplatz (optional)
+
+Zusätzlich zum Quotenvergleich kann die App Tabellenplatz + Form der letzten 5 Spiele
+([football-data.org](https://www.football-data.org), kostenlos, 10 Requests/Min.) einbeziehen -
+nur für die 5 "Big"-Ligen (Pokale haben keine klassische Tabelle). Fließt zu 20% in die
+Konfidenz-Berechnung ein: schlägt ein Team in besserer Form/Tabellenposition den Favoriten laut
+Quote, wird die Empfehlung etwas höher gewichtet - und umgekehrt. Ohne `FOOTBALL_DATA_API_KEY`
+läuft die App unverändert weiter, nur ohne diesen zusätzlichen Faktor.
+
 ## Setup
 
 ### 1. API-Key besorgen

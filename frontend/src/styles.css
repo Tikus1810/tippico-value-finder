@@ -330,6 +330,12 @@ td {
   padding-bottom: 0;
 }
 
+.form-line {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .market-label {
   color: var(--muted);
   font-size: 0.8rem;

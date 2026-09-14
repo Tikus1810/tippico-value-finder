@@ -32,13 +32,44 @@ function stddev(arr) {
  *    gewinnt - deshalb fließt die reine Wahrscheinlichkeit hier bewusst mit ein)
  *  - Anzahl der Vergleichs-Buchmacher (mehr = robuster)
  *  - Einigkeit zwischen den Buchmachern (geringe Streuung = mehr Vertrauen)
+ *  - Optional: Tabellenform (formScore 0-1), falls über football-data.org verfügbar
  */
-function computeConfidence({ edge, fairProb, numBooks, agreement }) {
-  const edgeScore = clamp(edge / 0.15, 0, 1) * 35; // 15%+ Edge = volle Punktzahl
-  const probScore = clamp(fairProb / 0.5, 0, 1) * 25; // 50%+ Gewinnwahrsch. = volle Punktzahl
-  const bookScore = clamp(numBooks / 6, 0, 1) * 20; // 6+ Vergleichs-Buchmacher = volle Punktzahl
-  const agreementScore = clamp(agreement, 0, 1) * 20;
-  return Math.round(edgeScore + probScore + bookScore + agreementScore);
+function computeConfidence({ edge, fairProb, numBooks, agreement, formScore = null }) {
+  if (formScore == null) {
+    // Keine Form-Daten verfügbar (Pokal-Wettbewerb oder kein API-Key) - alte Gewichtung.
+    const edgeScore = clamp(edge / 0.15, 0, 1) * 35;
+    const probScore = clamp(fairProb / 0.5, 0, 1) * 25;
+    const bookScore = clamp(numBooks / 6, 0, 1) * 20;
+    const agreementScore = clamp(agreement, 0, 1) * 20;
+    return Math.round(edgeScore + probScore + bookScore + agreementScore);
+  }
+  const edgeScore = clamp(edge / 0.15, 0, 1) * 30;
+  const probScore = clamp(fairProb / 0.5, 0, 1) * 20;
+  const bookScore = clamp(numBooks / 6, 0, 1) * 15;
+  const agreementScore = clamp(agreement, 0, 1) * 15;
+  const formPart = clamp(formScore, 0, 1) * 20;
+  return Math.round(edgeScore + probScore + bookScore + agreementScore + formPart);
+}
+
+/**
+ * Wie gut passt die Tabellenform zum getippten Ausgang? 0 = spricht klar dagegen,
+ * 1 = spricht klar dafür, 0.5 = neutral. Bei "Draw" zählt stattdessen, wie nah die beiden
+ * Teams tabellarisch beieinander liegen (knapper Abstand = Unentschieden plausibler).
+ */
+function computeFormScore(outcomeName, homeTeam, awayTeam, formInfo) {
+  if (!formInfo || !formInfo.home.form || !formInfo.away.form) return null;
+
+  if (outcomeName === 'Draw') {
+    const ptsGap = Math.abs(formInfo.home.points - formInfo.away.points);
+    return clamp(1 - ptsGap / 30, 0, 1);
+  }
+  if (outcomeName !== homeTeam && outcomeName !== awayTeam) return null;
+
+  const formDiff = (formInfo.home.form.points - formInfo.away.form.points) / 15; // -1..1, + = Heim in besserer Form
+  const posSignal = clamp((formInfo.away.position - formInfo.home.position) / 10, -1, 1); // + = Heim besser platziert
+  let signal = (formDiff + posSignal) / 2; // -1..1, + begünstigt Heimteam
+  if (outcomeName === awayTeam) signal = -signal;
+  return clamp((signal + 1) / 2, 0, 1);
 }
 
 function clamp(x, min, max) {
@@ -54,7 +85,7 @@ function stakeFromConfidence(confidence) {
  * Analysiert ein einzelnes Event (h2h-Markt) und gibt für jeden Ausgang, bei dem Tipico
  * eine im Vergleich zu günstige (= für uns vorteilhafte) Quote bietet, eine Empfehlung zurück.
  */
-function analyzeEvent(event, { minEdge = 0.02, minProb = 0.3, minBooks = 2 } = {}) {
+function analyzeEvent(event, { minEdge = 0.02, minProb = 0.3, minBooks = 2, formInfo = null } = {}) {
   const tipico = event.bookmakers?.find((b) => b.key === TIPICO_KEY);
   const tipicoMarket = tipico?.markets?.find((m) => m.key === 'h2h');
   if (!tipicoMarket) return [];
@@ -85,7 +116,8 @@ function analyzeEvent(event, { minEdge = 0.02, minProb = 0.3, minBooks = 2 } = {
     if (edge < minEdge) continue;
     if (fairProb < minProb) continue; // zu unwahrscheinlich, um "realistisch" zu sein
 
-    const confidence = computeConfidence({ edge, fairProb, numBooks: comparisons.length, agreement });
+    const formScore = computeFormScore(outcome.name, event.home_team, event.away_team, formInfo);
+    const confidence = computeConfidence({ edge, fairProb, numBooks: comparisons.length, agreement, formScore });
 
     recommendations.push({
       sport_key: event.sport_key,
@@ -101,6 +133,7 @@ function analyzeEvent(event, { minEdge = 0.02, minProb = 0.3, minBooks = 2 } = {
       confidence,
       num_books: comparisons.length,
       suggested_stake: stakeFromConfidence(confidence),
+      form: formInfo || null,
     });
   }
 
@@ -174,6 +207,7 @@ function buildComboSuggestions(
           outcome_name: l.outcome_name,
           odds: l.tipico_odds,
           fair_prob: l.fair_prob,
+          form: l.form,
         })),
         combined_odds: Number(combinedOdds.toFixed(2)),
         combined_fair_prob: Number(combinedFairProb.toFixed(4)),
@@ -191,6 +225,7 @@ module.exports = {
   analyzeEvent,
   devigOutcomes,
   computeConfidence,
+  computeFormScore,
   stakeFromConfidence,
   buildComboSuggestions,
   TIPICO_KEY,

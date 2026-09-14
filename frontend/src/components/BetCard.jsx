@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 
+function formatForm(formInfo) {
+  if (!formInfo) return null;
+  const home = formInfo.home;
+  const away = formInfo.away;
+  return `${home.position}. Platz (${home.form?.raw ?? '–'}) vs ${away.position}. Platz (${away.form?.raw ?? '–'})`;
+}
+
 function formatKickoff(iso) {
   if (!iso) return '';
   try {
@@ -68,6 +75,7 @@ export default function BetCard({ bet, onSave }) {
                 Quote: <strong>{Number(leg.odds ?? leg.tipico_odds).toFixed(2)}</strong>
               </div>
             </div>
+            {leg.form && <div className="form-line">📊 {formatForm(leg.form)}</div>}
           </div>
         ))}
       </div>

@@ -17,6 +17,7 @@ function singleToBetShape(rec) {
         outcome_name: rec.outcome_name,
         odds: rec.tipico_odds,
         fair_prob: rec.fair_prob,
+        form: rec.form,
       },
     ],
     combined_odds: rec.tipico_odds,

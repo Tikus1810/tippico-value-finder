@@ -14,6 +14,8 @@ services:
         sync: false # Turso-Datenbank-URL (libsql://...), selbst im Render-Dashboard eintragen
       - key: DATABASE_AUTH_TOKEN
         sync: false # Turso-Auth-Token, selbst im Render-Dashboard eintragen
+      - key: FOOTBALL_DATA_API_KEY
+        sync: false # optional: football-data.org Key für Team-Form/Tabellenplatz
       - key: TIPICO_BOOKMAKER_KEY
         value: tipico_de
       - key: ODDS_API_REGION

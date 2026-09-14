@@ -3,6 +3,7 @@ const { getOddsForSport } = require('../oddsApi');
 const { analyzeEvent, buildComboSuggestions, TIPICO_KEY } = require('../valueCalc');
 const { getSetting } = require('../db');
 const { todayBerlinDateString, berlinDayBoundsUtc } = require('../dateUtils');
+const { getFormForMatch, hasApiKey: hasFormDataKey } = require('../formData');
 
 const router = express.Router();
 
@@ -49,7 +50,10 @@ router.get('/', async (req, res, next) => {
         });
         quota = { remaining, used };
         for (const event of events) {
-          const recs = analyzeEvent(event, { minEdge, minProb });
+          const formInfo = hasFormDataKey()
+            ? await getFormForMatch(sportKey, event.home_team, event.away_team)
+            : null;
+          const recs = analyzeEvent(event, { minEdge, minProb, formInfo });
           results.push(...recs);
         }
       } catch (err) {
