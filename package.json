@@ -1,0 +1,12 @@
+{
+  "name": "tippico-value-finder",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend --omit=dev",
+    "start": "node backend/src/server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
