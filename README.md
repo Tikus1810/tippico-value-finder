@@ -7,9 +7,27 @@ daraus eine faire Gewinnwahrscheinlichkeit schätzt und dir Value-Wetten inkl. E
 ## 🌐 Live
 
 Läuft öffentlich unter **https://value-finder.onrender.com** (Render.com, kostenloser Tarif).
-Schläft nach ~15 Min. Inaktivität ein (erster Aufruf danach dauert 30–50 Sek.), Wett-Verlauf
-kann bei einem Neu-Deploy zurückgesetzt werden. Läuft komplett unabhängig von der lokalen
-Version unten (eigene, separate Datenbank).
+Schläft nach ~15 Min. Inaktivität ein (erster Aufruf danach dauert 30–50 Sek.). Läuft komplett
+unabhängig von der lokalen Version unten (eigene, separate Datenbank, sofern nicht per
+`DATABASE_URL` auf dieselbe Turso-Datenbank verbunden).
+
+### Persistente Datenbank (Turso) einrichten
+
+Damit Wett-Verlauf/Einstellungen einen Redeploy überleben, läuft die Datenbank optional über
+[Turso](https://turso.tech) (kostenlose Cloud-SQLite) statt der lokalen Render-Festplatte:
+
+1. Auf [turso.tech](https://turso.tech) kostenlos registrieren (z. B. per GitHub-Login).
+2. Im Dashboard **Create Database** → einen Namen vergeben (z. B. `value-finder`) → Region
+   egal, `Frankfurt (fra)` liegt am nächsten.
+3. In der Datenbank-Ansicht findest du:
+   - die **Database URL** (Format `libsql://value-finder-DEINNAME.turso.io`)
+   - unter **Create Token** einen **Auth Token** (Full Access reicht)
+4. Beide Werte bei Render unter **value-finder → Environment** eintragen:
+   `DATABASE_URL` und `DATABASE_AUTH_TOKEN`.
+5. Render deployt automatisch neu - ab jetzt bleibt alles dauerhaft erhalten.
+
+Ohne diese beiden Variablen läuft die App weiterhin einwandfrei, nutzt dann aber wieder die
+(ephemere) lokale Datei auf Render.
 
 ## ⚠️ Wichtig – bitte lesen
 
