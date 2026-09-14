@@ -27,14 +27,18 @@ function stddev(arr) {
 /**
  * Konfidenz-Score (0-100), rein heuristisch, kombiniert:
  *  - Höhe des Edge (Erwartungswert)
+ *  - Geschätzte Gewinn-Wahrscheinlichkeit selbst (ein hoher Edge bei einer 7%-Außenseiter-Quote
+ *    ist statistisch "Value", fühlt sich aber nicht nach einer Wette an, die man realistisch
+ *    gewinnt - deshalb fließt die reine Wahrscheinlichkeit hier bewusst mit ein)
  *  - Anzahl der Vergleichs-Buchmacher (mehr = robuster)
  *  - Einigkeit zwischen den Buchmachern (geringe Streuung = mehr Vertrauen)
  */
-function computeConfidence({ edge, numBooks, agreement }) {
-  const edgeScore = clamp(edge / 0.15, 0, 1) * 50; // 15%+ Edge = volle Punktzahl
-  const bookScore = clamp(numBooks / 6, 0, 1) * 25; // 6+ Vergleichs-Buchmacher = volle Punktzahl
-  const agreementScore = clamp(agreement, 0, 1) * 25;
-  return Math.round(edgeScore + bookScore + agreementScore);
+function computeConfidence({ edge, fairProb, numBooks, agreement }) {
+  const edgeScore = clamp(edge / 0.15, 0, 1) * 35; // 15%+ Edge = volle Punktzahl
+  const probScore = clamp(fairProb / 0.5, 0, 1) * 25; // 50%+ Gewinnwahrsch. = volle Punktzahl
+  const bookScore = clamp(numBooks / 6, 0, 1) * 20; // 6+ Vergleichs-Buchmacher = volle Punktzahl
+  const agreementScore = clamp(agreement, 0, 1) * 20;
+  return Math.round(edgeScore + probScore + bookScore + agreementScore);
 }
 
 function clamp(x, min, max) {
@@ -50,7 +54,7 @@ function stakeFromConfidence(confidence) {
  * Analysiert ein einzelnes Event (h2h-Markt) und gibt für jeden Ausgang, bei dem Tipico
  * eine im Vergleich zu günstige (= für uns vorteilhafte) Quote bietet, eine Empfehlung zurück.
  */
-function analyzeEvent(event, { minEdge = 0.02, minBooks = 2 } = {}) {
+function analyzeEvent(event, { minEdge = 0.02, minProb = 0.3, minBooks = 2 } = {}) {
   const tipico = event.bookmakers?.find((b) => b.key === TIPICO_KEY);
   const tipicoMarket = tipico?.markets?.find((m) => m.key === 'h2h');
   if (!tipicoMarket) return [];
@@ -79,8 +83,9 @@ function analyzeEvent(event, { minEdge = 0.02, minBooks = 2 } = {}) {
 
     const edge = fairProb * outcome.price - 1; // Erwartungswert pro gesetztem Euro
     if (edge < minEdge) continue;
+    if (fairProb < minProb) continue; // zu unwahrscheinlich, um "realistisch" zu sein
 
-    const confidence = computeConfidence({ edge, numBooks: comparisons.length, agreement });
+    const confidence = computeConfidence({ edge, fairProb, numBooks: comparisons.length, agreement });
 
     recommendations.push({
       sport_key: event.sport_key,
@@ -130,7 +135,10 @@ function combinations(arr, k) {
  * praktisch immer ein schlechterer Erwartungswert-Deal als die Einzelwetten für sich genommen.
  * Die Konfidenz wird deshalb bewusst mit einem Risikoabschlag pro zusätzlichem Bein versehen.
  */
-function buildComboSuggestions(recommendations, { legSizes = [2, 3], poolSize = 8, maxResults = 8 } = {}) {
+function buildComboSuggestions(
+  recommendations,
+  { legSizes = [2, 3], poolSize = 8, maxResults = 8, minCombinedProb = 0.15 } = {}
+) {
   // Nur ein Vorschlag pro Spiel zulassen (der mit der höchsten Konfidenz), damit Kombis
   // nicht zwei Ausgänge desselben (korrelierten) Spiels mischen.
   const byMatch = new Map();
@@ -149,6 +157,7 @@ function buildComboSuggestions(recommendations, { legSizes = [2, 3], poolSize = 
     for (const legs of combinations(pool, size)) {
       const combinedOdds = legs.reduce((p, l) => p * l.tipico_odds, 1);
       const combinedFairProb = legs.reduce((p, l) => p * l.fair_prob, 1);
+      if (combinedFairProb < minCombinedProb) continue; // zu unwahrscheinlich als Kombi
       const combinedEdge = combinedFairProb * combinedOdds - 1;
       const avgConfidence = mean(legs.map((l) => l.confidence));
       const riskPenalty = (legs.length - 1) * 10; // pro zusätzlichem Bein 10 Punkte Abschlag

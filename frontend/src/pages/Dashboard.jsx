@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [recs, setRecs] = useState([]);
   const [combos, setCombos] = useState([]);
   const [minEdge, setMinEdge] = useState(0.02);
+  const [minProb, setMinProb] = useState(0.3);
   const [date, setDate] = useState(todayLocalISO());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -50,7 +51,7 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getRecommendations(minEdge, date);
+      const data = await api.getRecommendations(minEdge, date, minProb);
       setRecs(data.recommendations || []);
       setCombos(data.combos || []);
       setWarning(data.warning || null);
@@ -65,7 +66,7 @@ export default function Dashboard() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [date, minProb]);
 
   async function handleSaveBet(bet) {
     await api.createBet(bet);
@@ -92,6 +93,16 @@ export default function Dashboard() {
             <option value={0.1}>10%</option>
           </select>
         </label>
+        <label>
+          Mindest-Wahrsch.:
+          <select value={minProb} onChange={(e) => setMinProb(Number(e.target.value))}>
+            <option value={0}>0% (auch Außenseiter/Longshots)</option>
+            <option value={0.2}>20%</option>
+            <option value={0.3}>30% (empfohlen)</option>
+            <option value={0.4}>40%</option>
+            <option value={0.5}>50%+ (nur Favoriten)</option>
+          </select>
+        </label>
         <button onClick={load} disabled={loading}>
           {loading ? 'Lädt…' : 'Aktualisieren'}
         </button>
@@ -106,9 +117,12 @@ export default function Dashboard() {
 
       <div className="disclaimer">
         Hinweis: Alle Werte sind statistische Schätzungen auf Basis eines Quotenvergleichs
-        (kein garantierter Gewinn). Kombi-Wetten multiplizieren die Buchmacher-Marge mit jedem
-        Bein - die Konfidenz wird deshalb pro zusätzlichem Bein bewusst niedriger angesetzt.
-        Setz nur Beträge ein, deren Verlust du verkraften kannst.
+        (kein garantierter Gewinn). "Mindest-Wahrsch." filtert unrealistische Außenseiter-Wetten
+        raus (hoher Edge bei niedriger Gewinnchance, z.B. eine 7%-Quote mit Value ist trotzdem
+        meistens ein Verlust) - höher stellen für Wetten, die du auch realistisch gewinnst.
+        Kombi-Wetten multiplizieren die Buchmacher-Marge mit jedem Bein - die Konfidenz wird
+        deshalb pro zusätzlichem Bein bewusst niedriger angesetzt. Setz nur Beträge ein, deren
+        Verlust du verkraften kannst.
       </div>
 
       {showManualForm && <ManualBetForm onSave={handleSaveBet} />}

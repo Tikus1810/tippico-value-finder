@@ -23,6 +23,7 @@ const COMPARISON_BOOKMAKERS = [
 router.get('/', async (req, res, next) => {
   try {
     const minEdge = Number(req.query.minEdge ?? 0.02);
+    const minProb = Number(req.query.minProb ?? 0.3);
     const requestedDate = req.query.date || todayBerlinDateString();
     const { startUtc, endUtc } = berlinDayBoundsUtc(requestedDate);
     const selectedRaw = await getSetting('selected_sport_keys', '[]');
@@ -48,7 +49,7 @@ router.get('/', async (req, res, next) => {
         });
         quota = { remaining, used };
         for (const event of events) {
-          const recs = analyzeEvent(event, { minEdge });
+          const recs = analyzeEvent(event, { minEdge, minProb });
           results.push(...recs);
         }
       } catch (err) {

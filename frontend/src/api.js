@@ -21,8 +21,12 @@ export const api = {
   getSports: () => request('/sports'),
   saveSportSelection: (sportKeys) =>
     request('/sports/selection', { method: 'POST', body: JSON.stringify({ sportKeys }) }),
-  getRecommendations: (minEdge, date) =>
-    request(`/recommendations?minEdge=${minEdge}${date ? `&date=${date}` : ''}`),
+  getRecommendations: (minEdge, date, minProb) =>
+    request(
+      `/recommendations?minEdge=${minEdge}${date ? `&date=${date}` : ''}${
+        minProb != null ? `&minProb=${minProb}` : ''
+      }`
+    ),
   getBets: () => request('/bets'),
   createBet: (bet) => request('/bets', { method: 'POST', body: JSON.stringify(bet) }),
   updateBet: (id, patch) => request(`/bets/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
