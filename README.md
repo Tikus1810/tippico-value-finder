@@ -4,6 +4,13 @@ Eine private Web-App (PWA), die Tipico-Quoten mit mehreren anderen Buchmachern v
 daraus eine faire Gewinnwahrscheinlichkeit schätzt und dir Value-Wetten inkl. Einsatzvorschlag
 (1-10€) und Konfidenz-Score anzeigt. Läuft im Browser auf PC und Handy (installierbar als App).
 
+## 🌐 Live
+
+Läuft öffentlich unter **https://value-finder.onrender.com** (Render.com, kostenloser Tarif).
+Schläft nach ~15 Min. Inaktivität ein (erster Aufruf danach dauert 30–50 Sek.), Wett-Verlauf
+kann bei einem Neu-Deploy zurückgesetzt werden. Läuft komplett unabhängig von der lokalen
+Version unten (eigene, separate Datenbank).
+
 ## ⚠️ Wichtig – bitte lesen
 
 - **Keine Gewinngarantie.** Die "faire Wahrscheinlichkeit" ist eine statistische Schätzung auf
