@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+const { init: initDb } = require('./db');
 const sportsRouter = require('./routes/sports');
 const recommendationsRouter = require('./routes/recommendations');
 const betsRouter = require('./routes/bets');
@@ -42,7 +43,16 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-// 0.0.0.0 binden, damit auch dein Handy im gleichen WLAN den Server erreichen kann
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend läuft auf http://0.0.0.0:${PORT}`);
-});
+
+// Datenbank-Schema erst sicherstellen, dann Server starten (Turso-Verbindung ist asynchron).
+initDb()
+  .then(() => {
+    // 0.0.0.0 binden, damit auch dein Handy im gleichen WLAN den Server erreichen kann
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Backend läuft auf http://0.0.0.0:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Datenbank-Initialisierung fehlgeschlagen:', err);
+    process.exit(1);
+  });

@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const { sports, remaining, used } = await listSports({ group: 'Soccer' });
-    const selectedRaw = getSetting('selected_sport_keys', '[]');
+    const selectedRaw = await getSetting('selected_sport_keys', '[]');
     const selected = new Set(JSON.parse(selectedRaw));
 
     res.json({
@@ -29,13 +29,17 @@ router.get('/', async (req, res, next) => {
 });
 
 // Ausgewählte Ligen speichern (die dann im Dashboard analysiert werden)
-router.post('/selection', (req, res) => {
-  const { sportKeys } = req.body;
-  if (!Array.isArray(sportKeys)) {
-    return res.status(400).json({ error: 'sportKeys muss ein Array von Sport-Keys sein.' });
+router.post('/selection', async (req, res, next) => {
+  try {
+    const { sportKeys } = req.body;
+    if (!Array.isArray(sportKeys)) {
+      return res.status(400).json({ error: 'sportKeys muss ein Array von Sport-Keys sein.' });
+    }
+    await setSetting('selected_sport_keys', JSON.stringify(sportKeys));
+    res.json({ ok: true, sportKeys });
+  } catch (err) {
+    next(err);
   }
-  setSetting('selected_sport_keys', JSON.stringify(sportKeys));
-  res.json({ ok: true, sportKeys });
 });
 
 module.exports = router;

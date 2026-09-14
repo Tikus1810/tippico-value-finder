@@ -1,73 +1,66 @@
-// Nutzt Node's eingebautes SQLite-Modul (node:sqlite) statt eines externen nativen Addons
-// (better-sqlite3), weil dessen vorkompilierte Binärdatei auf diesem Rechner mit der
-// installierten Node-Version abstürzte (native Assertion beim Aufräumen von Statements).
-// node:sqlite ist Teil von Node selbst und hat daher immer eine passende ABI.
-const { DatabaseSync } = require('node:sqlite');
+// Datenbank-Client: @libsql/client (SQLite-kompatibel).
+// - Lokal (kein DATABASE_URL gesetzt): schreibt in eine lokale Datei, genau wie vorher -
+//   kein Turso-Account nötig für die Entwicklung.
+// - Produktion (Render): DATABASE_URL/DATABASE_AUTH_TOKEN zeigen auf eine Turso-Cloud-DB,
+//   die unabhängig vom (ephemeren) Render-Dateisystem persistent bleibt.
+const { createClient } = require('@libsql/client');
 const path = require('path');
 
-const db = new DatabaseSync(path.join(__dirname, '..', 'data.db'));
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
+const client = createClient({
+  url: process.env.DATABASE_URL || `file:${path.join(__dirname, '..', 'data.db')}`,
+  authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS bets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    label TEXT,
-    combined_odds REAL,
-    combined_fair_prob REAL,
-    combined_edge REAL,
-    confidence REAL,
-    suggested_stake REAL,
-    actual_stake REAL,
-    status TEXT NOT NULL DEFAULT 'vorgeschlagen', -- vorgeschlagen | platziert | gewonnen | verloren | annulliert
-    result_profit REAL,
-    notes TEXT
+async function init() {
+  await client.batch(
+    [
+      `CREATE TABLE IF NOT EXISTS bets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        label TEXT,
+        combined_odds REAL,
+        combined_fair_prob REAL,
+        combined_edge REAL,
+        confidence REAL,
+        suggested_stake REAL,
+        actual_stake REAL,
+        status TEXT NOT NULL DEFAULT 'vorgeschlagen',
+        result_profit REAL,
+        notes TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS bet_legs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bet_id INTEGER NOT NULL,
+        leg_order INTEGER NOT NULL DEFAULT 0,
+        sport_key TEXT,
+        sport_title TEXT,
+        commence_time TEXT,
+        home_team TEXT,
+        away_team TEXT,
+        market TEXT,
+        outcome_name TEXT,
+        odds REAL NOT NULL,
+        fair_prob REAL
+      )`,
+      `CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )`,
+    ],
+    'write'
   );
-
-  CREATE TABLE IF NOT EXISTS bet_legs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bet_id INTEGER NOT NULL REFERENCES bets(id) ON DELETE CASCADE,
-    leg_order INTEGER NOT NULL DEFAULT 0,
-    sport_key TEXT,
-    sport_title TEXT,
-    commence_time TEXT,
-    home_team TEXT,
-    away_team TEXT,
-    market TEXT,
-    outcome_name TEXT,
-    odds REAL NOT NULL,
-    fair_prob REAL
-  );
-
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );
-`);
-
-/** Führt fn innerhalb einer SQLite-Transaktion aus (node:sqlite hat kein eingebautes db.transaction()). */
-function runInTransaction(fn) {
-  db.exec('BEGIN');
-  try {
-    const result = fn();
-    db.exec('COMMIT');
-    return result;
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
 }
 
-function getSetting(key, fallback = null) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  return row ? row.value : fallback;
+async function getSetting(key, fallback = null) {
+  const result = await client.execute({ sql: 'SELECT value FROM settings WHERE key = ?', args: [key] });
+  return result.rows[0] ? result.rows[0].value : fallback;
 }
 
-function setSetting(key, value) {
-  db.prepare(
-    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
-  ).run(key, value);
+async function setSetting(key, value) {
+  await client.execute({
+    sql: 'INSERT INTO settings (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+    args: { key, value },
+  });
 }
 
-module.exports = { db, getSetting, setSetting, runInTransaction };
+module.exports = { client, init, getSetting, setSetting };

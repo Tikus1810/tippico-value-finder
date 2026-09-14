@@ -25,7 +25,7 @@ router.get('/', async (req, res, next) => {
     const minEdge = Number(req.query.minEdge ?? 0.02);
     const requestedDate = req.query.date || todayBerlinDateString();
     const { startUtc, endUtc } = berlinDayBoundsUtc(requestedDate);
-    const selectedRaw = getSetting('selected_sport_keys', '[]');
+    const selectedRaw = await getSetting('selected_sport_keys', '[]');
     const selectedSports = JSON.parse(selectedRaw);
 
     if (!selectedSports.length) {

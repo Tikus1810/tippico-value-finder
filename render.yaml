@@ -10,6 +10,10 @@ services:
         value: 24.14.1
       - key: ODDS_API_KEY
         sync: false # trägst du selbst im Render-Dashboard ein (Environment -> Add Secret)
+      - key: DATABASE_URL
+        sync: false # Turso-Datenbank-URL (libsql://...), selbst im Render-Dashboard eintragen
+      - key: DATABASE_AUTH_TOKEN
+        sync: false # Turso-Auth-Token, selbst im Render-Dashboard eintragen
       - key: TIPICO_BOOKMAKER_KEY
         value: tipico_de
       - key: ODDS_API_REGION
